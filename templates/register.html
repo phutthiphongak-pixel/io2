@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}สมัครสมาชิก · ครัวบ้านสวน{% endblock %}
+{% block content %}
+<section class="auth">
+  <div class="brandmark">🍲</div><p class="eyebrow">MEMBER</p><h1>สมัครสมาชิก</h1>
+  <p class="muted">ชื่อและชื่อผู้ใช้รองรับภาษาไทย • รับแต้ม 10 แต้มทุกยอดอาหาร 100 บาท</p>
+  <form method="post" class="stack" id="register-form">
+    <label>ชื่อที่แสดง<input name="name" required maxlength="80" autocomplete="name" placeholder="เช่น สมชาย ใจดี" pattern="\S.*" title="ตัวแรกห้ามเป็นช่องว่าง"></label>
+    <label>ชื่อผู้ใช้<input name="username" required maxlength="40" autocomplete="username" placeholder="เช่น สมชาย" pattern="\S.*" title="ตัวแรกห้ามเป็นช่องว่าง"></label>
+    <label>รหัสผ่าน (อย่างน้อย 8 ตัว)<input id="password" name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+    <label>ยืนยันรหัสผ่าน<input id="password-confirm" name="password_confirm" type="password" minlength="8" required autocomplete="new-password"></label>
+    <p id="password-match" class="muted" aria-live="polite">กรุณากรอกรหัสผ่านทั้งสองช่องให้ตรงกัน</p>
+    <button class="primary" id="register-submit">สร้างบัญชี</button>
+  </form>
+  <p><a href="/login">กลับไปเข้าสู่ระบบ</a></p>
+</section>
+<script>
+(()=>{const a=document.getElementById('password'),b=document.getElementById('password-confirm'),m=document.getElementById('password-match'),s=document.getElementById('register-submit');
+function check(){const ok=a.value.length>=8 && a.value===b.value;m.textContent=!b.value?'กรุณากรอกรหัสผ่านทั้งสองช่องให้ตรงกัน':ok?'รหัสผ่านตรงกัน ✓':'รหัสผ่านไม่ตรงกัน';s.disabled=!!b.value&&!ok;} a.addEventListener('input',check);b.addEventListener('input',check);})();
+</script>
+{% endblock %}

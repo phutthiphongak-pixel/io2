@@ -1,0 +1,15 @@
+{% extends 'base.html' %}{% block title %}จองโต๊ะ · ครัวบ้านสวน{% endblock %}{% block content %}
+<header class="pagehead"><div><p class="eyebrow">บริการลูกค้า</p><h1>จองโต๊ะ</h1><p class="muted">เลือกโต๊ะและช่วงเวลาที่ต้องการ ระบบจะตรวจสอบเวลาซ้อนกันให้</p></div></header>
+<div class="grid2">
+<section class="panel"><h2>ส่งคำขอจองโต๊ะ</h2><form method="post" class="stack" id="customer-reservation-form">
+<label>ชื่อผู้จอง<input name="name" value="{{ current_user }}" required maxlength="80"></label>
+<label>เบอร์โทร<input name="phone" required maxlength="30"></label>
+<div class="row"><label>จำนวนคน<input type="number" name="guests" min="1" value="2" required></label><label>โต๊ะ<select name="table_id" id="customer-table" required><option value="">เลือกโต๊ะ</option>{% for t in tables %}<option value="{{ t.id }}" data-capacity="{{ t.capacity }}">{{ t.label }} · {{ t.capacity }} ที่นั่ง · {{ t.status }}</option>{% endfor %}</select></label></div>
+<div class="row"><label>เริ่มจอง<input type="datetime-local" name="reserved_at" id="customer-start" min="{{ now.strftime('%Y-%m-%dT%H:%M') }}" required></label><label>สิ้นสุด<input type="datetime-local" name="reserved_end" id="customer-end" required></label></div>
+<small class="muted">จองได้ตั้งแต่ 30 นาที ถึง 12 ชั่วโมง และโต๊ะเดียวกันห้ามมีช่วงเวลาทับซ้อนกัน</small>
+<button class="primary">ส่งคำขอจอง</button></form></section>
+<section class="panel"><h2>รายการจองของฉัน</h2>{% for r in reservations %}<div class="listrow"><div class="panelhead"><b>{{ r.table_label or 'โต๊ะ' }} · {{ r.guests }} คน</b><span class="status {% if r.status=='ยกเลิก' %}orange{% elif r.status=='ยืนยันแล้ว' %}green{% else %}blue{% endif %}">{{ r.status }}</span></div><span>🕒 {{ r.reserved_at }} – {{ r.reserved_end }}</span><small>{{ r.name }} · {{ r.phone }}</small>{% if r.status!='ยกเลิก' %}<form method="post" action="/customer/reservations/{{ r.id }}/cancel" onsubmit="return confirm('ยืนยันยกเลิกการจองนี้?')"><button class="danger small">ยกเลิกการจอง</button></form>{% endif %}</div>{% else %}<p class="muted">ยังไม่มีรายการจอง</p>{% endfor %}</section>
+</div>
+<script>
+(()=>{const s=document.getElementById('customer-start'),e=document.getElementById('customer-end');if(!s||!e)return;s.addEventListener('change',()=>{e.min=s.value;if(!e.value||e.value<=s.value){const d=new Date(s.value);d.setMinutes(d.getMinutes()+120);e.value=d.toISOString().slice(0,16)}})})();
+</script>{% endblock %}

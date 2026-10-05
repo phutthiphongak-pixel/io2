@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}สแกน QR โต๊ะ · ครัวบ้านสวน{% endblock %}
+{% block content %}
+<section class="auth qr-scan-page">
+  <div class="brandmark">▦</div>
+  <p class="eyebrow">TABLE QR SCANNER</p>
+  <h1>สแกน QR ของโต๊ะ</h1>
+  <p class="muted">ต้องสแกน QR ที่ติดอยู่บนโต๊ะให้ถูกต้องก่อน จึงจะสั่งอาหารได้</p>
+
+  {% if scan_error %}
+  <div class="panel" style="border-color:#c94f38;background:#fff5f2;color:#9f2f1f;margin:18px 0">
+    <strong>QR Code ไม่ถูกต้อง</strong>
+    <p style="margin:6px 0 0">{{ scan_error }}</p>
+  </div>
+  {% endif %}
+
+  <div class="panel qr-scanner-card">
+    <div id="qr-reader" style="width:100%;max-width:420px;margin:auto;min-height:260px;border-radius:16px;overflow:hidden;background:#f7f2ea;display:flex;align-items:center;justify-content:center">
+      <p id="qr-status" class="muted">กด “เปิดกล้อง” เพื่อสแกน QR ของโต๊ะ</p>
+      <video id="qr-video" playsinline muted style="display:none;width:100%;height:auto"></video>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:16px">
+      <button type="button" class="button primary" id="start-scan">เปิดกล้องสแกน QR</button>
+      <button type="button" class="button" id="stop-scan" hidden>หยุดกล้อง</button>
+    </div>
+    <label style="display:block;margin-top:14px;text-align:left">หรือเลือกรูป QR จากเครื่อง
+      <input id="qr-file" type="file" accept="image/*" capture="environment">
+    </label>
+    <p id="qr-result" class="muted" aria-live="polite" style="margin-top:12px"></p>
+  </div>
+
+  <div class="panel" style="text-align:left">
+    <h3>วิธีใช้งาน</h3>
+    <ol>
+      <li>อยู่ที่โต๊ะของร้าน แล้วกดเปิดกล้อง</li>
+      <li>หันกล้องไปที่ QR ของโต๊ะนั้น</li>
+      <li>ถ้า QR ถูกต้อง ระบบจะพาไปหน้าสั่งอาหารทันที</li>
+      <li>ถ้า QR ไม่ถูกต้อง ระบบจะแจ้งว่า <b>QR Code ไม่ถูกต้อง</b></li>
+    </ol>
+  </div>
+</section>
+
+<script>
+(() => {
+  const video = document.getElementById('qr-video');
+  const status = document.getElementById('qr-status');
+  const result = document.getElementById('qr-result');
+  const start = document.getElementById('start-scan');
+  const stop = document.getElementById('stop-scan');
+  const file = document.getElementById('qr-file');
+  let stream = null, timer = null, detector = null;
+
+  function invalid(msg='QR Code ไม่ถูกต้อง หรือ QR ของโต๊ะร้านอาหารไม่สามารถใช้งานได้') {
+    result.textContent = msg;
+    result.style.color = '#b43b27';
+  }
+  function valid(text) {
+    try {
+      const u = new URL(text, window.location.origin);
+      if (u.origin !== window.location.origin || !/^\/customer\/table\/\d+\/scan$/.test(u.pathname) || !u.searchParams.get('token')) {
+        invalid();
+        return false;
+      }
+      window.location.href = u.href;
+      return true;
+    } catch (_) {
+      invalid();
+      return false;
+    }
+  }
+  function stopCamera() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.style.display='none'; stop.hidden=true; start.hidden=false;
+    status.textContent='กด “เปิดกล้อง” เพื่อสแกน QR ของโต๊ะ';
+  }
+  async function startCamera() {
+    if (!('BarcodeDetector' in window)) {
+      invalid('เบราว์เซอร์นี้ไม่รองรับการสแกน QR ผ่านกล้อง กรุณาใช้กล้องโทรศัพท์สแกน QR ที่โต๊ะ หรือเลือกรูป QR ด้านล่าง');
+      return;
+    }
+    try {
+      detector = new BarcodeDetector({formats:['qr_code']});
+      stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      video.srcObject = stream; video.style.display='block'; await video.play();
+      start.hidden=true; stop.hidden=false; status.textContent='กำลังค้นหา QR...';
+      timer=setInterval(async()=>{
+        if (!video.videoWidth) return;
+        try {
+          const codes=await detector.detect(video);
+          if (codes.length && valid(codes[0].rawValue)) stopCamera();
+        } catch (_) {}
+      },250);
+    } catch (_) {
+      invalid('ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้อง หรือเลือกรูป QR');
+    }
+  }
+  start.addEventListener('click',startCamera);
+  stop.addEventListener('click',stopCamera);
+  file.addEventListener('change',async()=>{
+    const f=file.files[0]; if(!f) return;
+    if (!('BarcodeDetector' in window)) {
+      invalid('เบราว์เซอร์นี้ไม่รองรับการอ่าน QR จากรูป กรุณาใช้กล้องโทรศัพท์สแกน QR ที่โต๊ะ');
+      return;
+    }
+    try {
+      const d=new BarcodeDetector({formats:['qr_code']});
+      const code=await d.detect(await createImageBitmap(f));
+      if (code.length) valid(code[0].rawValue); else invalid();
+    } catch (_) { invalid(); }
+  });
+  window.addEventListener('beforeunload',stopCamera);
+})();
+</script>
+{% endblock %}

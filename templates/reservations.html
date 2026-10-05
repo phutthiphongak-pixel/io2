@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}จองโต๊ะและจัดคิว · ครัวบ้านสวน{% endblock %}
+{% block content %}
+<header class="pagehead">
+  <div>
+    <p class="eyebrow">บริการลูกค้า</p>
+    <h1>จองโต๊ะและจัดคิว</h1>
+    <p class="muted">จองโต๊ะเป็น “ช่วงเวลา” ได้ เช่น 12:00–13:30 แล้วโต๊ะเดิมสามารถรับจองช่วงอื่นต่อได้</p>
+  </div>
+</header>
+<div class="reservation-layout">
+  <section class="panel reservation-form-panel">
+    <div class="panelhead"><div><h2>บันทึกการจอง</h2><p class="muted">ระบบจะตรวจสอบเวลาซ้อนกันของโต๊ะให้อัตโนมัติ</p></div></div>
+    <form method="post" class="reservation-form" id="reservation-form">
+      <div class="reservation-field-grid">
+        <label>ชื่อลูกค้า<input name="name" required maxlength="80" autocomplete="name" placeholder="เช่น คุณสมชาย"></label>
+        <label>เบอร์โทร<input name="phone" maxlength="30" inputmode="tel" autocomplete="tel" placeholder="เช่น 0812345678"></label>
+      </div>
+      <div class="reservation-field-grid">
+        <label>จำนวนคน<input type="number" name="guests" min="1" max="100" value="2" required inputmode="numeric"></label>
+        <label>โต๊ะที่ต้องการ
+          <select name="table_id" id="reservation-table" required>
+            <option value="">— เลือกโต๊ะ —</option>
+            {% for t in tables %}<option value="{{ t.id }}" data-capacity="{{ t.capacity }}">{{ t.label }} · {{ t.capacity }} ที่นั่ง · สถานะปัจจุบัน: {{ t.status }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="reservation-field-grid">
+        <label>เริ่มจอง<input type="datetime-local" name="reserved_at" id="reserved-at" min="{{ now.strftime('%Y-%m-%dT%H:%M') }}" required></label>
+        <label>สิ้นสุดการจอง<input type="datetime-local" name="reserved_end" id="reserved-end" required></label>
+      </div>
+      <div class="reservation-duration" id="reservation-duration">เลือกเวลาเริ่มและเวลาสิ้นสุดเพื่อดูระยะเวลาจอง</div>
+      <div class="reservation-help"><b>กติกา</b><span>อย่างน้อย 30 นาที และไม่เกิน 12 ชั่วโมง ระบบจะไม่อนุญาตให้จองโต๊ะเดียวกันในช่วงเวลาที่ทับซ้อนกัน</span></div>
+      <button class="primary reservation-submit" type="submit">บันทึกการจอง</button>
+    </form>
+  </section>
+  <section class="panel">
+    <div class="panelhead"><div><h2>รายการจอง</h2><p class="muted">รายการเรียงจากช่วงเวลาเริ่มจองล่าสุด</p></div><span class="pill">{{ reservations|length }} รายการ</span></div>
+    <div class="reservation-list">
+      {% for r in reservations %}
+      <article class="reservation-card">
+        <div class="panelhead"><div><b>{{ r.name or 'ไม่ระบุชื่อ' }}</b><small>{{ r.phone or '-' }}</small></div><span class="status {% if r.status=='ยืนยันแล้ว' %}green{% elif r.status=='ยกเลิก' %}orange{% else %}blue{% endif %}">{{ r.status or 'รอยืนยัน' }}</span></div>
+        <div class="reservation-meta"><span>🪑 {{ r.table_label or 'ยังไม่ระบุโต๊ะ' }}</span><span>👥 {{ r.guests }} คน</span><span>🕒 {{ r.reserved_at }} – {{ r.reserved_end }}</span></div>
+      </article>
+      {% else %}<div class="empty">ยังไม่มีรายการจอง</div>{% endfor %}
+    </div>
+  </section>
+</div>
+<script>
+(() => {
+  const form=document.getElementById('reservation-form'), start=document.getElementById('reserved-at'), end=document.getElementById('reserved-end'), guests=form?.querySelector('[name="guests"]'), table=document.getElementById('reservation-table'), duration=document.getElementById('reservation-duration');
+  if(!form||!start||!end||!guests||!table)return;
+  const update=()=>{
+    if(start.value){ end.min=start.value; if(!end.value || end.value<=start.value){ const d=new Date(start.value); d.setMinutes(d.getMinutes()+120); end.value=d.toISOString().slice(0,16); } }
+    if(start.value&&end.value){ const mins=(new Date(end.value)-new Date(start.value))/60000; duration.textContent=mins>0?`ระยะเวลาจอง ${Math.floor(mins/60)} ชั่วโมง ${mins%60} นาที`:'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'; }
+  };
+  start.addEventListener('change',update); end.addEventListener('change',update); update();
+  form.addEventListener('submit',e=>{
+    const opt=table.options[table.selectedIndex], cap=Number(opt?.dataset.capacity||0), count=Number(guests.value||0);
+    if(!table.value||!cap){e.preventDefault();alert('กรุณาเลือกโต๊ะ');return;}
+    if(count<1||count>cap){e.preventDefault();alert(`โต๊ะนี้รองรับได้สูงสุด ${cap} คน`);return;}
+    if(!start.value||!end.value||end.value<=start.value){e.preventDefault();alert('กรุณากำหนดช่วงเวลาเริ่มต้นและสิ้นสุดให้ถูกต้อง');return;}
+  });
+})();
+</script>
+{% endblock %}

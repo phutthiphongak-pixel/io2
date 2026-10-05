@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block title %}สมาชิกและแต้ม · ครัวบ้านสวน{% endblock %}{% block content %}
+<header class="pagehead"><div><p class="eyebrow">MEMBER</p><h1>{{ current_user }}</h1><p class="muted">แต้มสะสมใช้เป็นส่วนลดได้ 1 แต้ม = ฿1</p></div><a class="button" href="/customer/order">กลับไปสั่งอาหาร</a></header>
+<section class="grid2"><div class="panel"><p class="eyebrow">แต้มสะสม</p><h2 style="font-size:48px">{{ member_points }} <small>แต้ม</small></h2><p class="muted">ยอดอาหารทุก ฿100 รับ 10 แต้ม</p></div>
+<div class="panel"><h2>ประวัติแต้ม</h2>{% for x in transactions %}<div class="billrow"><span>{{ x.note }}<small>{{ x.created_at }}</small></span><b>{% if x.points>0 %}+{% endif %}{{ x.points }}</b></div>{% else %}<p class="muted">ยังไม่มีรายการแต้ม</p>{% endfor %}</div></section>
+{% endblock %}

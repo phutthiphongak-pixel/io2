@@ -1,0 +1,4 @@
+Restaurant POS demo notes
+Default logins are listed in README.md. Change them before any public deployment.
+The local SQLite database is created in instance/restaurant.db at first run.
+Upload menu CSV columns: name,category,price,stock

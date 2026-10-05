@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}ตรวจสอบบิล · ครัวบ้านสวน{% endblock %}
+{% block content %}
+<header class="pagehead"><div><p class="eyebrow">ออเดอร์ #{{ order.id }} · {{ order.label }}</p><h1>ตรวจสอบบิล</h1><p class="muted">{{ order.created_at }} · สถานะ {{ order.status }}</p></div></header>
+<div class="grid2 checkout-layout">
+  <section class="panel"><h2>รายการอาหาร</h2><div class="tablewrap"><table><thead><tr><th>เมนู</th><th>จำนวน</th><th>ราคา</th><th></th></tr></thead><tbody>
+  {% for i in items %}<tr class="{% if i.cancelled %}muted{% endif %}"><td>{{ i.name }}<small>{{ i.options }}{% if i.note %} · 📝 {{ i.note }}{% endif %} · {{ i.status }} {% if i.cancelled %}· ยกเลิก{% endif %}</small></td><td>{{ i.quantity }}</td><td>฿{{ '%.2f'|format(i.price*i.quantity) }}</td><td>{% if not i.cancelled and order.status!='ชำระแล้ว' %}<form method="post" action="/orders/{{ order.id }}/item/{{ i.id }}/cancel"><button class="danger small">ยกเลิก</button></form>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div></section>
+  {% if order.status!='ชำระแล้ว' %}
+  <section class="panel checkout-panel"><h2>สรุปยอดชำระ</h2><p class="muted">ระบบคำนวณจากรายการอาหาร พร้อม VAT และ Service Charge</p>
+    <form id="checkout-form" method="post" action="/orders/{{ order.id }}/checkout" class="stack" data-subtotal="{{ bill_preview.subtotal }}">
+      <label>ส่วนลดร้าน (บาท)<input id="discount-input" type="number" name="discount" min="0" step=".01" value="{{ order.discount or 0 }}"></label>
+      {% if order.customer_user_id %}
+      <label>ใช้แต้มสมาชิก (1 แต้ม = ฿1)<input id="points-input" type="number" name="points_redeemed" min="0" max="{{ member_points }}" step="1" value="0"></label>
+      <p class="muted">มีแต้มใช้ได้ {{ member_points }} แต้ม · ระบบจะได้รับ 10 แต้มต่อยอดอาหารทุก ฿100 หลังชำระเงิน</p>
+      {% endif %}
+      <div class="row"><label>Service Charge (%)<input id="service-input" type="number" name="service_rate" min="0" max="100" step=".01" value="{{ '%.2f'|format((order.service_rate or 0)*100) }}"></label><label>VAT (%)<input id="vat-input" type="number" name="vat_rate" min="0" max="100" step=".01" value="{{ '%.2f'|format((order.vat_rate or 0)*100) }}"></label></div>
+      <div class="bill-summary" aria-live="polite">
+        <div><span>ค่าอาหาร</span><b id="food-total">฿{{ '%.2f'|format(bill_preview.subtotal) }}</b></div>
+        <div><span>ส่วนลด</span><b id="discount-total">−฿{{ '%.2f'|format(bill_preview.discount) }}</b></div>
+        <div><span>Service Charge</span><b id="service-total">฿{{ '%.2f'|format(bill_preview.service) }}</b></div>
+        <div><span>VAT</span><b id="vat-total">฿{{ '%.2f'|format(bill_preview.vat) }}</b></div>
+        <div class="bill-grand-total"><strong>ยอดสุทธิที่ต้องชำระ</strong><strong id="grand-total">฿{{ '%.2f'|format(bill_preview.total) }}</strong></div>
+        <div class="bill-change"><span id="change-label">เงินทอน</span><b id="change-total">฿0.00</b></div>
+      </div>
+      <label>รับเงินจากลูกค้า (บาท)<input id="paid-input" type="number" name="paid" min="0" step=".01" placeholder="เว้นว่างเพื่อรับเงินพอดี"></label>
+      <label>วิธีชำระ<select name="payment_method"><option>เงินสด</option><option>โอน/QR</option><option>บัตร</option></select></label>
+      <button class="primary checkout-submit">ยืนยันรับชำระและออกใบเสร็จ</button>
+    </form>
+    <hr><h3>ย้ายโต๊ะ</h3><form method="post" action="/orders/{{ order.id }}/move" class="row"><select name="table_id">{% for t in tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}</select><button>ย้าย</button></form>
+  </section>
+  {% else %}<a class="button primary" href="/receipt/{{ order.id }}">ดูใบเสร็จ</a>{% endif %}
+</div>
+{% if order.status!='ชำระแล้ว' %}<script>
+(()=>{
+  const form=document.getElementById('checkout-form');
+  const fields={discount:document.getElementById('discount-input'),points:document.getElementById('points-input'),service:document.getElementById('service-input'),vat:document.getElementById('vat-input'),paid:document.getElementById('paid-input')};
+  const money=value=>'฿'+Number(value||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const round=value=>Math.round((value+Number.EPSILON)*100)/100;
+  function updateBill(){
+    const subtotal=Number(form.dataset.subtotal||0),points=Math.min(Math.max(Number(fields.points?.value||0),0),Number(fields.points?.max||0)),discount=Math.min(Math.max(Number(fields.discount.value||0),0)+points,subtotal);
+    const service=round((subtotal-discount)*Math.min(Math.max(Number(fields.service.value||0),0),100)/100);
+    const vat=round((subtotal-discount+service)*Math.min(Math.max(Number(fields.vat.value||0),0),100)/100);
+    const total=round(subtotal-discount+service+vat),received=fields.paid.value===''?total:Math.max(Number(fields.paid.value||0),0),change=round(Math.max(received-total,0)),short=round(Math.max(total-received,0));
+    document.getElementById('food-total').textContent=money(subtotal);
+    document.getElementById('discount-total').textContent='−'+money(discount);
+    document.getElementById('service-total').textContent=money(service);
+    document.getElementById('vat-total').textContent=money(vat);
+    document.getElementById('grand-total').textContent=money(total);
+    document.getElementById('change-label').textContent=short>0?'ยอดที่ยังขาด':'เงินทอน';
+    document.getElementById('change-total').textContent=money(short||change);
+    document.getElementById('change-total').classList.toggle('shortfall',short>0);\n    form.querySelector('.checkout-submit').disabled=short>0;
+  }
+  Object.values(fields).forEach(input=>input.addEventListener('input',updateBill));
+  updateBill();
+})();
+</script>{% endif %}
+{% endblock %}

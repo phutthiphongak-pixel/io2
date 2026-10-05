@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block title %}เข้าสู่ระบบ · ครัวบ้านสวน{% endblock %}{% block content %}
+<section class="auth"><div class="brandmark">🍲</div><p class="eyebrow">RESTAURANT POS</p><h1>ยินดีต้อนรับ</h1><p class="muted">ชื่อผู้ใช้รองรับภาษาไทย</p>
+<form method="post" class="stack"><label>ชื่อผู้ใช้<input name="username" required autocomplete="username"></label><label>รหัสผ่าน<input name="password" type="password" required autocomplete="current-password"></label><button class="primary">เข้าสู่ระบบ</button></form>
+<p>ยังไม่มีบัญชี? <a href="/register">สมัครสมาชิก</a></p><div class="demo"><b>บัญชีทดลอง</b><br>admin / admin123 · staff / staff123 · customer / customer123</div></section>{% endblock %}
